@@ -13,6 +13,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix, recall_score, f1_s
 from sklearn.preprocessing import normalize, StandardScaler
 
 import seaborn as sns
+import joblib
 
 genres = ["classical", "jazz", "pop", "reggae", "rock"]
 
@@ -90,7 +91,7 @@ def random_forest():
     test_features = sc.transform(test_features)
 
     # nombre d'arbres
-    n_estimators = [500, 1000, 2000, 3000, 4000, 5000]
+    n_estimators = [2000, 4000]
     # profondeur max de l'arbre
     max_depth = [20]
     max_depth.append(None)
@@ -108,20 +109,11 @@ def random_forest():
     print(random_grid)
 
     # création du modèle
-    rf = RandomForestClassifier(random_state = 0, max_features = 'sqrt', bootstrap = True)
-
-    # random search
-    rf_random = RandomizedSearchCV(estimator = rf, param_distributions = random_grid, n_iter = 10, cv = 3, verbose=2, random_state=0, n_jobs = -1)
+    rf = RandomForestClassifier(n_estimators=4000, max_features='sqrt', max_depth=20, min_samples_split=2, min_samples_leaf=1, bootstrap=True, criterion='gini' ,random_state=0)
 
     # fit le modèle
-    rf_random.fit(train_features, train_labels)
+    rf.fit(train_features, train_labels)
 
-    pd_res = pd.concat([pd.DataFrame(rf_random.cv_results_["params"]),pd.DataFrame(rf_random.cv_results_["mean_test_score"], columns=["Accuracy"])],axis=1)
-    pd_res = pd_res.sort_values('Accuracy', ascending=False)
-    print(rf_random.best_params_)
-    print(pd_res.head(5))
-
-    """
     # prédictions
     predictions = rf.predict(test_features)
 
@@ -135,13 +127,47 @@ def random_forest():
 
     print(classification_report(predictions, test_labels))
 
-    sns.set()
+    sns.set_theme()
     mat = confusion_matrix(test_labels, predictions)
     sns.heatmap(mat.T, square=True, annot=True, fmt='d', cbar=False, xticklabels=genres, yticklabels=genres)
     plt.xlabel('true label')
-    plt.ylabel('predicted label')"""
+    plt.ylabel('predicted label')
 
-    
+    joblib.dump(rf, "model.pkl")
+
+def predict_song(filename):
+    model = joblib.load("model.pkl")
+    music = librosa.load(filename)[0]
+    print(music)
+
+    time = 0
+    total_duration = 30
+    delta = 20
+    sr = 22050
+    features = [0 for i in range(23)]
+
+    while (time < total_duration):
+
+        #print("1 : ", int(time*sr) , "2 : ", int((time + 1/60) * sr))
+        sub_music = music[int(time*sr):int((time + 1/delta) * sr)]
+        zcr = librosa.zero_crossings(sub_music)
+        features[0] = np.add(features[0], (sum(zcr)))
+
+        spectral_centroid = librosa.feature.spectral_centroid(y = sub_music, n_fft=128)[0]
+        features[1] = np.mean([np.mean(features[1]), (np.mean(spectral_centroid))])
+
+        tempo =librosa.feature.tempo(y = sub_music)
+        features[2] = np.mean([np.mean(features[2]), (np.mean(tempo))])
+
+        mfcc = librosa.feature.mfcc(y = sub_music, n_fft = 128)
+        for i in range(len(mfcc)):
+            features[3 + i] = np.mean([np.mean(features[3 + i]), (np.mean(mfcc[i]))])
+
+        output = model.predict([features])
+        time += 1/delta
+        print(time, " : ", output)
+   
 
 #df = csv_creation()
-random_forest()
+#random_forest()
+predict_song("./Data/genres_original/classical/classical.00007.wav")
