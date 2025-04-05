@@ -139,35 +139,44 @@ def predict_song(filename):
     model = joblib.load("model.pkl")
     music = librosa.load(filename)[0]
     print(music)
+    classes = model.classes_.tolist()
 
     time = 0
     total_duration = 30
-    delta = 20
+    frequency = 6 # between 6 and 7 to have approximatively 1 second worth of computing done in 1 real second
+    nb_samples = 1
     sr = 22050
     features = [0 for i in range(23)]
+    sum_features = [0 for i in range(22)] # no need to stock zero crossings sum, already in features array
 
     while (time < total_duration):
-
-        #print("1 : ", int(time*sr) , "2 : ", int((time + 1/60) * sr))
-        sub_music = music[int(time*sr):int((time + 1/delta) * sr)]
+        #print("1 : ", int(time*sr) , "2 : ", int((time + 1/frequency) * sr))
+        sub_music = music[int(time*sr):int((time + 1/frequency) * sr)]
         zcr = librosa.zero_crossings(sub_music)
         features[0] = np.add(features[0], (sum(zcr)))
 
-        spectral_centroid = librosa.feature.spectral_centroid(y = sub_music, n_fft=128)[0]
-        features[1] = np.mean([np.mean(features[1]), (np.mean(spectral_centroid))])
+        spectral_centroid = librosa.feature.spectral_centroid(y = sub_music, n_fft=256)[0]
+        sum_features[0] += np.mean(spectral_centroid)
+        features[1] = sum_features[0] / nb_samples
 
         tempo =librosa.feature.tempo(y = sub_music)
-        features[2] = np.mean([np.mean(features[2]), (np.mean(tempo))])
+        sum_features[1] += np.mean(tempo)
+        features[2] = sum_features[1] / nb_samples
 
-        mfcc = librosa.feature.mfcc(y = sub_music, n_fft = 128)
+        mfcc = librosa.feature.mfcc(y = sub_music, n_mels = 15, n_fft = 256)
         for i in range(len(mfcc)):
-            features[3 + i] = np.mean([np.mean(features[3 + i]), (np.mean(mfcc[i]))])
+            sum_features[2+i] += np.mean(mfcc[i])
+            features[3 + i] = sum_features[2+i] / nb_samples
 
-        output = model.predict([features])
-        time += 1/delta
-        print(time, " : ", output)
+        output = model.predict_proba([features])
+        output = output.tolist()[0]
+        prediction = classes[output.index(max(output))]
+        time += 1/frequency
+        nb_samples += 1
+        print(time, ": predicted", prediction, "with probabilities : \n", classes[0] , "->", output[0], "\n", classes[1] , "->", output[1], "\n", classes[2] , "->", output[2], "\n", classes[3] , "->", output[3], "\n", classes[4] , "->", output[4])
+    print("Final prediction :", prediction, "with probability", max(output))
    
 
 #df = csv_creation()
 #random_forest()
-predict_song("./Data/genres_original/classical/classical.00007.wav")
+res = predict_song("./Data/genres_original/classical/classical.00002.wav")
