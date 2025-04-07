@@ -17,7 +17,7 @@ import joblib
 
 genres = ["classical", "jazz", "pop", "reggae", "rock"]
 
-def csv_creation():
+def csv_creation_default_features():
     # retrieving all wav files form 5 different genres (jazz 54 missing, maybe corrupted)
     
     wav_files = {}
@@ -29,7 +29,7 @@ def csv_creation():
             file_path = dir_path + "/" + file
             wav_files[g].append(librosa.load(file_path)[0])
 
-    column_names = ['zcr', 'spectral_c', 'tempo', 'mfcc1', 'mfcc2', 'mfcc3',
+    column_names = ['zcr', 'spectral_centroid', 'tempo', 'mfcc1', 'mfcc2', 'mfcc3',
                 'mfcc4', 'mfcc5', 'mfcc6', 'mfcc7', 'mfcc8', 'mfcc9',
                 'mfcc10', 'mfcc11', 'mfcc12', 'mfcc13', 'mfcc14', 'mfcc15',
                 'mfcc16', 'mfcc17', 'mfcc18', 'mfcc19', 'mfcc20', 'label']
@@ -57,9 +57,94 @@ def csv_creation():
             df.loc[count] = features+[g]
             count += 1
     
-    df.to_csv('music.csv', index = False)
+    df.to_csv('music_default_features.csv', index = False)
     return df
 
+
+def csv_creation_with_contrast():
+    # retrieving all wav files form 5 different genres (jazz 54 missing, maybe corrupted)
+    
+    wav_files = {}
+
+    for g in genres:
+        wav_files[g] = []
+        dir_path = "./Data/genres_original/" + g
+        for file in os.listdir(dir_path):
+            file_path = dir_path + "/" + file
+            wav_files[g].append(librosa.load(file_path)[0])
+
+    column_names = ['zcr', 'spectral_centroid', 'tempo', 'spectral_contrast', 'mfcc1', 'mfcc2', 'mfcc3',
+                'mfcc4', 'mfcc5', 'mfcc6', 'mfcc7', 'mfcc8', 'mfcc9',
+                'mfcc10', 'mfcc11', 'mfcc12', 'mfcc13', 'mfcc14', 'mfcc15',
+                'mfcc16', 'mfcc17', 'mfcc18', 'mfcc19', 'mfcc20', 'label']
+    df = pd.DataFrame(columns = column_names)
+    count = 0
+
+    # extraction of the features
+    for g in genres:
+        for music in wav_files[g]:
+            features = []
+
+            zcr = librosa.zero_crossings(music)
+            features.append(sum(zcr))
+
+            spectral_centroid = librosa.feature.spectral_centroid(y = music)[0]
+            features.append(np.mean(spectral_centroid))
+
+            tempo =librosa.feature.tempo(y = music)
+            features.append(np.mean(tempo))
+
+            spectral_contrast = librosa.feature.spectral_contrast(y = music)
+            features.append(np.mean(spectral_contrast))
+
+            mfcc = librosa.feature.mfcc(y = music)
+            for m in mfcc:
+                features.append(np.mean(m))
+
+            df.loc[count] = features+[g]
+            count += 1
+    
+    df.to_csv('music_with_contrast.csv', index = False)
+    return df
+
+def csv_creation_without_zcr():
+    # retrieving all wav files form 5 different genres (jazz 54 missing, maybe corrupted)
+    wav_files = {}
+
+    for g in genres:
+        wav_files[g] = []
+        dir_path = "./Data/genres_original/" + g
+        for file in os.listdir(dir_path):
+            file_path = dir_path + "/" + file
+            wav_files[g].append(librosa.load(file_path)[0])
+
+    column_names = ['spectral_centroid', 'tempo', 'mfcc1', 'mfcc2', 'mfcc3',
+                'mfcc4', 'mfcc5', 'mfcc6', 'mfcc7', 'mfcc8', 'mfcc9',
+                'mfcc10', 'mfcc11', 'mfcc12', 'mfcc13', 'mfcc14', 'mfcc15',
+                'mfcc16', 'mfcc17', 'mfcc18', 'mfcc19', 'mfcc20', 'label']
+    df = pd.DataFrame(columns = column_names)
+    count = 0
+
+    # extraction of the features
+    for g in genres:
+        for music in wav_files[g]:
+            features = []
+
+            spectral_centroid = librosa.feature.spectral_centroid(y = music)[0]
+            features.append(np.mean(spectral_centroid))
+
+            tempo =librosa.feature.tempo(y = music)
+            features.append(np.mean(tempo))
+
+            mfcc = librosa.feature.mfcc(y = music)
+            for m in mfcc:
+                features.append(np.mean(m))
+
+            df.loc[count] = features+[g]
+            count += 1
+    
+    df.to_csv('music_without_zcr.csv', index = False)
+    return df
 
 def print_param():
     rf = RandomForestClassifier(random_state = 0)
@@ -67,19 +152,16 @@ def print_param():
     print(rf.get_params())
 
 
-def random_forest():
-    df= pd.read_csv('music.csv')
+def random_forest(csv_filename_extension):
+    df= pd.read_csv("music_" + csv_filename_extension + ".csv")
     features = df
-    # valeurs à prédire
+    # values to predict
     labels = np.array(features['label'])
-    # supprime les labels des données
+    # deleting labels
     features = features.drop('label', axis = 1)
-    # sauvegarde le nom de features
-    feature_list = list(features.columns)
-    # conversion en numpy array
     features = np.array(features)
 
-    # séparer les données en training and testing sets
+    # separating data
     train_features, test_features, train_labels, test_labels = train_test_split(features, labels, test_size = 0.35, random_state = 0)
     print('Training Features Shape:', train_features.shape)
     print('Training Labels Shape:', train_labels.shape)
@@ -90,31 +172,9 @@ def random_forest():
     train_features = sc.fit_transform(train_features)
     test_features = sc.transform(test_features)
 
-    # nombre d'arbres
-    n_estimators = [2000, 4000]
-    # profondeur max de l'arbre
-    max_depth = [20]
-    max_depth.append(None)
-    # nombre d'échantillon min nécessaire par noeuds
-    min_samples_split = [2, 4]#[2]
-    # nombre d'échantillon min nécessaire par feuilles
-    min_samples_leaf = [1, 2]#[1]
-
-    # création de la grille
-    random_grid = {'n_estimators': n_estimators,
-                'max_depth': max_depth,
-                'min_samples_split': min_samples_split,
-                'min_samples_leaf': min_samples_leaf,
-                }
-    print(random_grid)
-
-    # création du modèle
-    rf = RandomForestClassifier(n_estimators=4000, max_features='sqrt', max_depth=20, min_samples_split=2, min_samples_leaf=1, bootstrap=True, criterion='gini' ,random_state=0)
-
-    # fit le modèle
+    # creating model
+    rf = RandomForestClassifier(n_estimators=5000, max_features='sqrt', max_depth=30, min_samples_split=2, min_samples_leaf=1, bootstrap=True, criterion='gini', random_state=0, n_jobs = 4)
     rf.fit(train_features, train_labels)
-
-    # prédictions
     predictions = rf.predict(test_features)
 
     # Zero_one_loss error
@@ -132,11 +192,12 @@ def random_forest():
     sns.heatmap(mat.T, square=True, annot=True, fmt='d', cbar=False, xticklabels=genres, yticklabels=genres)
     plt.xlabel('true label')
     plt.ylabel('predicted label')
+    plt.show()
 
-    joblib.dump(rf, "model.pkl")
+    joblib.dump(rf, "model_" + csv_filename_extension + ".pkl")
 
-def predict_song(filename):
-    model = joblib.load("model.pkl")
+def predict_song(filename, model_filename_extension):
+    model = joblib.load("model_" + model_filename_extension + ".pkl")
     music = librosa.load(filename)[0]
     print(music)
     classes = model.classes_.tolist()
@@ -146,27 +207,38 @@ def predict_song(filename):
     frequency = 6 # between 6 and 7 to have approximatively 1 second worth of computing done in 1 real second
     nb_samples = 1
     sr = 22050
-    features = [0 for i in range(23)]
-    sum_features = [0 for i in range(22)] # no need to stock zero crossings sum, already in features array
+    nb_features = 23
+    if (model_filename_extension == "with_contrast"):
+        nb_features += 1
+    if (model_filename_extension == "without_zcr"):
+        nb_features -= 1
+    features = [0 for i in range(nb_features)] # 23 default, 24 with contrast, 22 without zcr
+    sum_features = [0 for i in range(nb_features-1)] # no need to stock zero crossings sum, already in features array
 
     while (time < total_duration):
-        #print("1 : ", int(time*sr) , "2 : ", int((time + 1/frequency) * sr))
         sub_music = music[int(time*sr):int((time + 1/frequency) * sr)]
-        zcr = librosa.zero_crossings(sub_music)
-        features[0] = np.add(features[0], (sum(zcr)))
+
+        if (model_filename_extension != "without_zcr"):
+            zcr = librosa.zero_crossings(sub_music)
+            features[0] = np.add(features[0], (sum(zcr)))
 
         spectral_centroid = librosa.feature.spectral_centroid(y = sub_music, n_fft=256)[0]
         sum_features[0] += np.mean(spectral_centroid)
         features[1] = sum_features[0] / nb_samples
 
-        tempo =librosa.feature.tempo(y = sub_music)
+        tempo = librosa.feature.tempo(y = sub_music)
         sum_features[1] += np.mean(tempo)
         features[2] = sum_features[1] / nb_samples
 
+        if (model_filename_extension == "with_contrast"):
+            spectral_contrast = librosa.feature.spectral_contrast(y = sub_music)
+            sum_features[2] += np.mean(spectral_contrast)
+            features[3] = sum_features[2] / nb_samples
+
         mfcc = librosa.feature.mfcc(y = sub_music, n_mels = 15, n_fft = 256)
         for i in range(len(mfcc)):
-            sum_features[2+i] += np.mean(mfcc[i])
-            features[3 + i] = sum_features[2+i] / nb_samples
+            sum_features[3+i] += np.mean(mfcc[i])
+            features[4 + i] = sum_features[2+i] / nb_samples
 
         output = model.predict_proba([features])
         output = output.tolist()[0]
@@ -177,6 +249,6 @@ def predict_song(filename):
     print("Final prediction :", prediction, "with probability", max(output))
    
 
-#df = csv_creation()
-#random_forest()
-res = predict_song("./Data/genres_original/classical/classical.00002.wav")
+df = csv_creation_without_zcr()
+random_forest("without_zcr")
+res = predict_song("./Data/genres_original/jazz/jazz.00008.wav", "without_zcr")
