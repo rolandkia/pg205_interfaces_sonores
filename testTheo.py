@@ -199,7 +199,6 @@ def random_forest(csv_filename_extension):
 def predict_song(filename, model_filename_extension):
     model = joblib.load("model_" + model_filename_extension + ".pkl")
     music = librosa.load(filename)[0]
-    print(music)
     classes = model.classes_.tolist()
 
     time = 0
@@ -249,6 +248,57 @@ def predict_song(filename, model_filename_extension):
     print("Final prediction :", prediction, "with probability", max(output))
    
 
-df = csv_creation_without_zcr()
-random_forest("without_zcr")
+# how to use it :
+# initialize time at 0, total_duration at 30, frequency at 6, nb_samples at 1
+# filename is the wav file (for example "./Data/genres_original/jazz/jazz.00008.wav")
+# model_filename_extension is the model to use (for example "default_features" for model_default_features.pkl)
+# while (time < total_duration) loop calling this function
+# at each iteration, increase : time += 1/frequency, nb_samples += 1
+def predict_song_for_graphics(filename, model_filename_extension, time, nb_samples):
+    model = joblib.load("model_" + model_filename_extension + ".pkl")
+    music = librosa.load(filename)[0]
+
+    total_duration = 30
+    frequency = 6 # between 6 and 7 to have approximatively 1 second worth of computing done in 1 real second
+    sr = 22050
+    nb_features = 23
+
+    if (model_filename_extension == "with_contrast"):
+        nb_features += 1
+    if (model_filename_extension == "without_zcr"):
+        nb_features -= 1
+    features = [0 for i in range(nb_features)] # 23 default, 24 with contrast, 22 without zcr
+    sum_features = [0 for i in range(nb_features-1)] # no need to stock zero crossings sum, already in features array
+
+    while (time < total_duration):
+        sub_music = music[int(time*sr):int((time + 1/frequency) * sr)]
+
+        if (model_filename_extension != "without_zcr"):
+            zcr = librosa.zero_crossings(sub_music)
+            features[0] = np.add(features[0], (sum(zcr)))
+
+        spectral_centroid = librosa.feature.spectral_centroid(y = sub_music, n_fft=256)[0]
+        sum_features[0] += np.mean(spectral_centroid)
+        features[1] = sum_features[0] / nb_samples
+
+        tempo = librosa.feature.tempo(y = sub_music)
+        sum_features[1] += np.mean(tempo)
+        features[2] = sum_features[1] / nb_samples
+
+        if (model_filename_extension == "with_contrast"):
+            spectral_contrast = librosa.feature.spectral_contrast(y = sub_music)
+            sum_features[2] += np.mean(spectral_contrast)
+            features[3] = sum_features[2] / nb_samples
+
+        mfcc = librosa.feature.mfcc(y = sub_music, n_mels = 15, n_fft = 256)
+        for i in range(len(mfcc)):
+            sum_features[3+i] += np.mean(mfcc[i])
+            features[4 + i] = sum_features[2+i] / nb_samples
+
+        output = model.predict_proba([features])
+        output = output.tolist()[0]
+        return output
+
+# df = csv_creation_without_zcr()
+# random_forest("without_zcr")
 res = predict_song("./Data/genres_original/jazz/jazz.00008.wav", "without_zcr")
