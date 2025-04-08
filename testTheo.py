@@ -107,7 +107,7 @@ def csv_creation_with_contrast():
     df.to_csv('music_with_contrast.csv', index = False)
     return df
 
-def csv_creation_without_zcr():
+def csv_creation_without_zcr_tempo():
     # retrieving all wav files form 5 different genres (jazz 54 missing, maybe corrupted)
     wav_files = {}
 
@@ -118,7 +118,7 @@ def csv_creation_without_zcr():
             file_path = dir_path + "/" + file
             wav_files[g].append(librosa.load(file_path)[0])
 
-    column_names = ['spectral_centroid', 'tempo', 'mfcc1', 'mfcc2', 'mfcc3',
+    column_names = ['spectral_centroid', 'mfcc1', 'mfcc2', 'mfcc3',
                 'mfcc4', 'mfcc5', 'mfcc6', 'mfcc7', 'mfcc8', 'mfcc9',
                 'mfcc10', 'mfcc11', 'mfcc12', 'mfcc13', 'mfcc14', 'mfcc15',
                 'mfcc16', 'mfcc17', 'mfcc18', 'mfcc19', 'mfcc20', 'label']
@@ -133,9 +133,6 @@ def csv_creation_without_zcr():
             spectral_centroid = librosa.feature.spectral_centroid(y = music)[0]
             features.append(np.mean(spectral_centroid))
 
-            tempo =librosa.feature.tempo(y = music)
-            features.append(np.mean(tempo))
-
             mfcc = librosa.feature.mfcc(y = music)
             for m in mfcc:
                 features.append(np.mean(m))
@@ -143,7 +140,7 @@ def csv_creation_without_zcr():
             df.loc[count] = features+[g]
             count += 1
     
-    df.to_csv('music_without_zcr.csv', index = False)
+    df.to_csv('music_without_zcr_tempo.csv', index = False)
     return df
 
 def print_param():
@@ -173,7 +170,7 @@ def random_forest(csv_filename_extension):
     test_features = sc.transform(test_features)
 
     # creating model
-    rf = RandomForestClassifier(n_estimators=5000, max_features='sqrt', max_depth=30, min_samples_split=2, min_samples_leaf=1, bootstrap=True, criterion='gini', random_state=0, n_jobs = 4)
+    rf = RandomForestClassifier(n_estimators=2000, max_features='sqrt', max_depth=15, min_samples_split=2, min_samples_leaf=1, bootstrap=True, criterion='gini', random_state=0, n_jobs = 4)
     rf.fit(train_features, train_labels)
     predictions = rf.predict(test_features)
 
@@ -209,15 +206,15 @@ def predict_song(filename, model_filename_extension):
     nb_features = 23
     if (model_filename_extension == "with_contrast"):
         nb_features += 1
-    if (model_filename_extension == "without_zcr"):
-        nb_features -= 1
-    features = [0 for i in range(nb_features)] # 23 default, 24 with contrast, 22 without zcr
+    if (model_filename_extension == "without_zcr_tempo"):
+        nb_features -= 2
+    features = [0 for i in range(nb_features)] # 23 default, 24 with contrast, 21 without zcr and tempo
     sum_features = [0 for i in range(nb_features-1)] # no need to stock zero crossings sum, already in features array
 
     while (time < total_duration):
         sub_music = music[int(time*sr):int((time + 1/frequency) * sr)]
 
-        if (model_filename_extension != "without_zcr"):
+        if (model_filename_extension != "without_zcr_tempo"):
             zcr = librosa.zero_crossings(sub_music)
             features[0] = np.add(features[0], (sum(zcr)))
 
@@ -225,9 +222,10 @@ def predict_song(filename, model_filename_extension):
         sum_features[0] += np.mean(spectral_centroid)
         features[1] = sum_features[0] / nb_samples
 
-        tempo = librosa.feature.tempo(y = sub_music)
-        sum_features[1] += np.mean(tempo)
-        features[2] = sum_features[1] / nb_samples
+        if (model_filename_extension != "without_zcr_tempo"):
+            tempo = librosa.feature.tempo(y = sub_music)
+            sum_features[1] += np.mean(tempo)
+            features[2] = sum_features[1] / nb_samples
 
         if (model_filename_extension == "with_contrast"):
             spectral_contrast = librosa.feature.spectral_contrast(y = sub_music)
@@ -265,15 +263,15 @@ def predict_song_for_graphics(filename, model_filename_extension, time, nb_sampl
 
     if (model_filename_extension == "with_contrast"):
         nb_features += 1
-    if (model_filename_extension == "without_zcr"):
-        nb_features -= 1
-    features = [0 for i in range(nb_features)] # 23 default, 24 with contrast, 22 without zcr
+    if (model_filename_extension == "without_zcr_tempo"):
+        nb_features -= 2
+    features = [0 for i in range(nb_features)] # 23 default, 24 with contrast, 21 without zcr and tempo
     sum_features = [0 for i in range(nb_features-1)] # no need to stock zero crossings sum, already in features array
 
     while (time < total_duration):
         sub_music = music[int(time*sr):int((time + 1/frequency) * sr)]
 
-        if (model_filename_extension != "without_zcr"):
+        if (model_filename_extension != "without_zcr_tempo"):
             zcr = librosa.zero_crossings(sub_music)
             features[0] = np.add(features[0], (sum(zcr)))
 
@@ -281,9 +279,10 @@ def predict_song_for_graphics(filename, model_filename_extension, time, nb_sampl
         sum_features[0] += np.mean(spectral_centroid)
         features[1] = sum_features[0] / nb_samples
 
-        tempo = librosa.feature.tempo(y = sub_music)
-        sum_features[1] += np.mean(tempo)
-        features[2] = sum_features[1] / nb_samples
+        if (model_filename_extension != "without_zcr_tempo"):
+            tempo = librosa.feature.tempo(y = sub_music)
+            sum_features[1] += np.mean(tempo)
+            features[2] = sum_features[1] / nb_samples
 
         if (model_filename_extension == "with_contrast"):
             spectral_contrast = librosa.feature.spectral_contrast(y = sub_music)
@@ -299,6 +298,6 @@ def predict_song_for_graphics(filename, model_filename_extension, time, nb_sampl
         output = output.tolist()[0]
         return output
 
-# df = csv_creation_without_zcr()
-# random_forest("without_zcr")
-res = predict_song("./Data/genres_original/jazz/jazz.00008.wav", "without_zcr")
+df = csv_creation_without_zcr_tempo()
+random_forest("without_zcr_tempo")
+res = predict_song("./Data/genres_original/jazz/jazz.00008.wav", "without_zcr_tempo")
