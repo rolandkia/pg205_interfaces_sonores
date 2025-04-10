@@ -204,7 +204,7 @@ def main_loop():
 
 	# --- Paramètres de base ---
 	WIDTH, HEIGHT = 600, 800
-	BACKGROUND_COLOR = (150, 150, 150)
+	BACKGROUND_COLOR = (200, 200, 200)
 	screen = pygame.display.set_mode((WIDTH, HEIGHT))
 	pygame.display.set_caption("")
 	clock = pygame.time.Clock()
@@ -340,7 +340,7 @@ def ai_loop():
 				nb_time += 1/frequency
 				nb_samples += 1
 			else:
-				ai_res = []
+				# ai_res = []
 				s_features = [0 for i in range(24-1)]
 		elif is_mic_one:
 			ai_res, s_features = predict_song_from_mic(data, model_used, s_features, nb_samples)
