@@ -205,7 +205,7 @@ def main_loop():
 
 	# --- Paramètres de base ---
 	WIDTH, HEIGHT = 600, 800
-	BACKGROUND_COLOR = (150, 150, 150)
+	BACKGROUND_COLOR = (200, 200, 200)
 	screen = pygame.display.set_mode((WIDTH, HEIGHT))
 	pygame.display.set_caption("")
 	clock = pygame.time.Clock()
