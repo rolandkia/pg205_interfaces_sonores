@@ -30,8 +30,7 @@ def csv_creation_default_features():
 
     column_names = ['zcr', 'spectral_centroid', 'tempo', 'mfcc1', 'mfcc2', 'mfcc3',
                 'mfcc4', 'mfcc5', 'mfcc6', 'mfcc7', 'mfcc8', 'mfcc9',
-                'mfcc10', 'mfcc11', 'mfcc12', 'mfcc13', 'mfcc14', 'mfcc15',
-                'mfcc16', 'mfcc17', 'mfcc18', 'mfcc19', 'mfcc20', 'label']
+                'mfcc10', 'label']
     df = pd.DataFrame(columns = column_names)
     count = 0
 
@@ -49,14 +48,14 @@ def csv_creation_default_features():
             tempo =librosa.feature.tempo(y = music)
             features.append(np.mean(tempo))
 
-            mfcc = librosa.feature.mfcc(y = music)
+            mfcc = librosa.feature.mfcc(y = music, n_mels = 10)
             for m in mfcc:
                 features.append(np.mean(m))
 
             df.loc[count] = features+[g]
             count += 1
     
-    df.to_csv('csv/music_default_features.csv', index = False)
+    df.to_csv('csv/music_10_default_features.csv', index = False)
     return df
 
 
@@ -74,8 +73,7 @@ def csv_creation_with_contrast():
 
     column_names = ['zcr', 'spectral_centroid', 'tempo', 'spectral_contrast', 'mfcc1', 'mfcc2', 'mfcc3',
                 'mfcc4', 'mfcc5', 'mfcc6', 'mfcc7', 'mfcc8', 'mfcc9',
-                'mfcc10', 'mfcc11', 'mfcc12', 'mfcc13', 'mfcc14', 'mfcc15',
-                'mfcc16', 'mfcc17', 'mfcc18', 'mfcc19', 'mfcc20', 'label']
+                'mfcc10', 'label']
     df = pd.DataFrame(columns = column_names)
     count = 0
 
@@ -96,14 +94,14 @@ def csv_creation_with_contrast():
             spectral_contrast = librosa.feature.spectral_contrast(y = music)
             features.append(np.mean(spectral_contrast))
 
-            mfcc = librosa.feature.mfcc(y = music)
+            mfcc = librosa.feature.mfcc(y = music, n_mels = 10)
             for m in mfcc:
                 features.append(np.mean(m))
 
             df.loc[count] = features+[g]
             count += 1
     
-    df.to_csv('csv/music_with_contrast.csv', index = False)
+    df.to_csv('csv/music_10_with_contrast.csv', index = False)
     return df
 
 def csv_creation_without_zcr_tempo():
@@ -119,8 +117,7 @@ def csv_creation_without_zcr_tempo():
 
     column_names = ['spectral_centroid', 'mfcc1', 'mfcc2', 'mfcc3',
                 'mfcc4', 'mfcc5', 'mfcc6', 'mfcc7', 'mfcc8', 'mfcc9',
-                'mfcc10', 'mfcc11', 'mfcc12', 'mfcc13', 'mfcc14', 'mfcc15',
-                'mfcc16', 'mfcc17', 'mfcc18', 'mfcc19', 'mfcc20', 'label']
+                'mfcc10', 'label']
     df = pd.DataFrame(columns = column_names)
     count = 0
 
@@ -132,18 +129,18 @@ def csv_creation_without_zcr_tempo():
             spectral_centroid = librosa.feature.spectral_centroid(y = music)[0]
             features.append(np.mean(spectral_centroid))
 
-            mfcc = librosa.feature.mfcc(y = music)
+            mfcc = librosa.feature.mfcc(y = music, n_mels = 10)
             for m in mfcc:
                 features.append(np.mean(m))
 
             df.loc[count] = features+[g]
             count += 1
     
-    df.to_csv('csv/music_without_zcr_tempo.csv', index = False)
+    df.to_csv('csv/music_10_without_zcr_tempo.csv', index = False)
     return df
 
 def random_forest(csv_filename_extension):
-    df= pd.read_csv('csv/music_' + csv_filename_extension + '.csv')
+    df= pd.read_csv('csv/music_10_' + csv_filename_extension + '.csv')
     features = df
     # values to predict
     labels = np.array(features['label'])
@@ -163,7 +160,7 @@ def random_forest(csv_filename_extension):
     test_features = sc.transform(test_features)
 
     # creating model
-    rf = RandomForestClassifier(n_estimators=2500, max_features='sqrt', max_depth=15, min_samples_split=2, min_samples_leaf=1, bootstrap=True, criterion='gini', random_state=0, n_jobs = 4)
+    rf = RandomForestClassifier(n_estimators=2000, max_features='sqrt', max_depth=15, min_samples_split=2, min_samples_leaf=1, bootstrap=True, criterion='gini', random_state=0, n_jobs = 4)
     rf.fit(train_features, train_labels)
     predictions = rf.predict(test_features)
 
@@ -187,10 +184,10 @@ def random_forest(csv_filename_extension):
     plt.ylabel('predicted label')
     plt.show()
 
-    joblib.dump(rf, 'models/model_test' + csv_filename_extension + '.pkl')
+    joblib.dump(rf, 'models/model_10_' + csv_filename_extension + '.pkl')
 
 def predict_song(filename, model_filename_extension):
-    model = joblib.load('models/model_' + model_filename_extension + '.pkl')
+    model = joblib.load('models/model_10_' + model_filename_extension + '.pkl')
     music = librosa.load(filename)[0]
     classes = model.classes_.tolist()
 
@@ -199,8 +196,9 @@ def predict_song(filename, model_filename_extension):
     frequency = 3 # between 2 and 3 to have approximatively 1 second worth of computing done in 1 real second
     nb_samples = 1
     sr = 22050
+    nb_mfcc = 10
 
-    nb_features = 23
+    nb_features = 23 - (20 - nb_mfcc)
     sum_adjustement = 0
     if (model_filename_extension == 'with_contrast'):
         nb_features += 1
@@ -241,7 +239,7 @@ def predict_song(filename, model_filename_extension):
         else:
             feat_offset -= 1
 
-        mfcc = librosa.feature.mfcc(y = sub_music, n_mels = 20, n_fft = 2048)
+        mfcc = librosa.feature.mfcc(y = sub_music, n_mels = nb_mfcc, n_fft = 2048)
         for i in range(len(mfcc)):
             sum_features[3 + feat_offset + sum_offset + i] += np.mean(mfcc[i])
             features[4 + feat_offset + i] = sum_features[3 + feat_offset + sum_offset + i] / nb_samples
@@ -255,7 +253,8 @@ def predict_song(filename, model_filename_extension):
     print('Final prediction :', prediction, 'with probability', max(output))
 
 model_used = 'default_features'
-nb_features = 23
+nb_mfcc = 10
+nb_features = 23 - (20 - nb_mfcc)
 sum_adjustement = 0
 if (model_used == 'with_contrast'):
     nb_features += 1
@@ -268,10 +267,13 @@ sum_features = [0 for i in range(nb_features - 1 + sum_adjustement)] # no need t
 # initialize time at 0, total_duration at 30, frequency at 2 or 3, nb_samples at 1
 # filename is the wav file (for example './Data/genres_original/jazz/jazz.00008.wav')
 # model_filename_extension is the model to use (for example 'default_features' for model_default_features.pkl)
+# nb_mfcc must be 10 or 20
+# sum_features should be initialized as it is above
 # while (time < total_duration) loop calling this function
-# at each iteration, increase : time += 1/frequency, nb_samples += 1
-def predict_song_for_graphics(filename, model_filename_extension, sum_features, time, nb_samples):
-    model = joblib.load('models/model_' + model_filename_extension + '.pkl')
+# at each iteration, increase : time += 1/frequency, nb_samples += 1, update sum_features
+def predict_song_for_graphics(filename, model_filename_extension, nb_mfcc, sum_features, time, nb_samples):
+    model_mfcc = 'models/model_' if nb_mfcc == 20 else 'models/model_10_'
+    model = joblib.load(model_mfcc + model_filename_extension + '.pkl')
     music = librosa.load(filename)[0]
 
     frequency = 3 # between 2 and 3 to have approximatively 1 second worth of computing done in 1 real second
@@ -309,7 +311,7 @@ def predict_song_for_graphics(filename, model_filename_extension, sum_features, 
     else:
         feat_offset -= 1
 
-    mfcc = librosa.feature.mfcc(y = sub_music, n_mels = 20, n_fft = 2048)
+    mfcc = librosa.feature.mfcc(y = sub_music, n_mels = nb_mfcc, n_fft = 2048)
     for i in range(len(mfcc)):
         sum_features[3 + feat_offset + sum_offset + i] += np.mean(mfcc[i])
         features[4 + feat_offset + i] = sum_features[3 + feat_offset + sum_offset + i] / nb_samples
@@ -318,8 +320,9 @@ def predict_song_for_graphics(filename, model_filename_extension, sum_features, 
     output = output.tolist()[0]
     return output, sum_features
 
-def predict_song_from_mic(mic_song, model_filename_extension, sum_features, nb_samples):
-    model = joblib.load('models/model_' + model_filename_extension + '.pkl')
+def predict_song_from_mic(mic_song, model_filename_extension, nb_mfcc, sum_features, nb_samples):
+    model_mfcc = 'models/model_' if nb_mfcc == 20 else 'models/model_10_'
+    model = joblib.load(model_mfcc + model_filename_extension + '.pkl')
     feat_adjustement = -1 if model_filename_extension == 'without_zcr_tempo' else 0
     features = [0 for i in range(len(sum_features) + 1 + feat_adjustement)] # 23 default, 24 with contrast, 21 without zcr and tempo
 
@@ -353,7 +356,7 @@ def predict_song_from_mic(mic_song, model_filename_extension, sum_features, nb_s
     else:
         feat_offset -= 1
 
-    mfcc = librosa.feature.mfcc(y = sub_music, n_mels = 20, n_fft = 2048)
+    mfcc = librosa.feature.mfcc(y = sub_music, n_mels = nb_mfcc, n_fft = 2048)
     for i in range(len(mfcc)):
         sum_features[3 + feat_offset + sum_offset + i] += np.mean(mfcc[i])
         features[4 + feat_offset + i] = sum_features[3 + feat_offset + sum_offset + i] / nb_samples
@@ -364,4 +367,4 @@ def predict_song_from_mic(mic_song, model_filename_extension, sum_features, nb_s
 
 # df = csv_creation_without_zcr_tempo()
 # random_forest('default_features')
-# res = predict_song('./Data/genres_original/pop/pop.00045.wav', 'with_contrast')
+# res = predict_song('./Data/genres_original/rock/rock.00000.wav', 'with_contrast')
