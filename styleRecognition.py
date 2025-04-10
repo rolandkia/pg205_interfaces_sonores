@@ -327,4 +327,4 @@ def predict_song_from_mic(mic_song, model_filename_extension, sum_features, nb_s
 
 # df = csv_creation_without_zcr_tempo()
 # random_forest("with_contrast")
-res = predict_song("./Data/genres_original/rock/rock.00045.wav", "with_contrast")
+# res = predict_song("./Data/genres_original/rock/rock.00045.wav", "with_contrast")
