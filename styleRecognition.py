@@ -208,7 +208,7 @@ def predict_song(filename, model_filename_extension):
         nb_features -= 2
         sum_adjustement = 1
     features = [0 for i in range(nb_features)] # 23 default, 24 with contrast, 21 without zcr and tempo
-    sum_features = [0 for i in range(nb_features-1+sum_adjustement)] # no need to stock zero crossings sum, already in features array
+    sum_features = [0 for i in range(nb_features - 1 + sum_adjustement)] # no need to stock zero crossings sum, already in features array
 
     while (time < total_duration):
         sub_music = music[int(time*sr):int((time + 1/frequency) * sr)]
@@ -256,11 +256,13 @@ def predict_song(filename, model_filename_extension):
 
 model_used = 'default_features'
 nb_features = 23
+sum_adjustement = 0
 if (model_used == 'with_contrast'):
     nb_features += 1
 if (model_used == 'without_zcr_tempo'):
     nb_features -= 2
-sum_features = [0 for i in range(nb_features-1)] # no need to stock zero crossings sum, already in features array
+    sum_adjustement = 1
+sum_features = [0 for i in range(nb_features - 1 + sum_adjustement)] # no need to stock zero crossings sum, already in features array
 
 # how to use it :
 # initialize time at 0, total_duration at 30, frequency at 2 or 3, nb_samples at 1
@@ -274,7 +276,8 @@ def predict_song_for_graphics(filename, model_filename_extension, sum_features, 
 
     frequency = 3 # between 2 and 3 to have approximatively 1 second worth of computing done in 1 real second
     sr = 22050
-    features = [0 for i in range(len(sum_features)+1)] # 23 default, 24 with contrast, 21 without zcr and tempo
+    feat_adjustement = -1 if model_filename_extension == 'without_zcr_tempo' else 0
+    features = [0 for i in range(len(sum_features) + 1 + feat_adjustement)] # 23 default, 24 with contrast, 21 without zcr and tempo
 
     sub_music = music[int(time*sr):int((time + 1/frequency) * sr)]
 
@@ -317,7 +320,8 @@ def predict_song_for_graphics(filename, model_filename_extension, sum_features, 
 
 def predict_song_from_mic(mic_song, model_filename_extension, sum_features, nb_samples):
     model = joblib.load('models/model_' + model_filename_extension + '.pkl')
-    features = [0 for i in range(len(sum_features)+1)] # 23 default, 24 with contrast, 21 without zcr and tempo
+    feat_adjustement = -1 if model_filename_extension == 'without_zcr_tempo' else 0
+    features = [0 for i in range(len(sum_features) + 1 + feat_adjustement)] # 23 default, 24 with contrast, 21 without zcr and tempo
 
     sub_music = mic_song
 

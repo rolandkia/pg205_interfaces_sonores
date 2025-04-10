@@ -184,7 +184,15 @@ nb_time = 0
 nb_samples = 1 
 running = True
 ai_res = []
-s_features = [0 for i in range(24-1)]
+model_used = 'with_contrast'
+nb_features = 23
+sum_adjustement = 0
+if (model_used == 'with_contrast'):
+    nb_features += 1
+if (model_used == 'without_zcr_tempo'):
+    nb_features -= 2
+    sum_adjustement = 1
+s_features = [0 for i in range(nb_features - 1 + sum_adjustement)]
 is_mic_one = False
 data = []
 
@@ -323,19 +331,19 @@ def main_loop():
 	pygame.quit()
 
 def ai_loop():
-	global is_file_selected, nb_samples, nb_time, total_duration, frequency, selected_file, running, ai_res, s_features, is_mic_on, data
+	global is_file_selected, nb_samples, nb_time, total_duration, frequency, selected_file, running, ai_res, s_features, is_mic_one, data, model_used
 	
 	while running:
 		if not is_mic_one:
 			if is_file_selected and nb_time < total_duration: 
-				ai_res, s_features = predict_song_for_graphics(selected_file, "with_contrast", s_features ,nb_time, nb_samples)
+				ai_res, s_features = predict_song_for_graphics(selected_file, model_used, s_features ,nb_time, nb_samples)
 				nb_time += 1/frequency
 				nb_samples += 1
 			else:
 				ai_res = []
 				s_features = [0 for i in range(24-1)]
 		elif is_mic_one:
-			ai_res, s_features = predict_song_from_mic(data, "with_contrast", s_features, nb_samples)
+			ai_res, s_features = predict_song_from_mic(data, model_used, s_features, nb_samples)
 			nb_samples += 1
   
 				
