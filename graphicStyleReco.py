@@ -198,7 +198,7 @@ is_mic_one = False
 data = []
 
 def main_loop():
-	global selected_file, is_file_selected, running, ai_res, nb_time, nb_samples, s_features, is_mic_one, data
+	global selected_file, is_file_selected, running, ai_res, nb_time, nb_samples, s_features, is_mic_one, data, model_used, nb_mfcc
 	
 	pygame.init()
 	pygame.mixer.init()
@@ -280,7 +280,14 @@ def main_loop():
 
 			elif event.type == pygame.USEREVENT:
 				if event.user_type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
-					s_features = [0 for i in range(24-1)]
+					nb_features = 23 - (20 - nb_mfcc)
+					sum_adjustement = 0
+					if (model_used == 'with_contrast'):
+						nb_features += 1
+					if (model_used == 'without_zcr_tempo'):
+						nb_features -= 2
+						sum_adjustement = 1
+					s_features = [0 for i in range(nb_features - 1 + sum_adjustement)]
 					nb_time = 0
 					nb_samples = 1 
 					selected_file = event.text
@@ -341,7 +348,7 @@ def ai_loop():
 				nb_time += 1/frequency
 				nb_samples += 1
 			else:
-				ai_res = []
+				# ai_res = []
 				nb_features = 23 - (20 - nb_mfcc)
 				sum_adjustement = 0
 				if (model_used == 'with_contrast'):
